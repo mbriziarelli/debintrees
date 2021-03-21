@@ -1,107 +1,103 @@
+import { Comparator, Direction, getDirectionFromBoolean } from "./types.ts";
+import { isNode, isNull, Node } from "./node.ts";
+import { TreeBase } from "./treebase.ts";
 
-var TreeBase = require('./treebase');
+export class BinTree<T> extends TreeBase<T> {
+  root: Node<T> | null = null;
+  size = 0;
 
-function Node(data) {
-    this.data = data;
-    this.left = null;
-    this.right = null;
-}
+  constructor(public comparator: Comparator<T>) {
+    super();
+  }
 
-Node.prototype.get_child = function(dir) {
-    return dir ? this.right : this.left;
-};
+  /**
+   * @param data The data to insert
+   * @returns true if inserted, false if duplicate
+   */
+  insert(data: T) {
+    if (isNull(this.root)) {
+      this.root = new Node(data);
+      this.size++;
 
-Node.prototype.set_child = function(dir, val) {
-    if(dir) {
-        this.right = val;
+      return true;
     }
-    else {
-        this.left = val;
-    }
-};
 
-function BinTree(comparator) {
-    this._root = null;
-    this._comparator = comparator;
-    this.size = 0;
-}
+    let parent: Node<T> | null = null;
+    let node: Node<T> | null = this.root;
+    let direction = Direction.Left;
 
-BinTree.prototype = new TreeBase();
+    while (true) {
+      if (isNull(node)) {
+        node = new Node(data);
 
-// returns true if inserted, false if duplicate
-BinTree.prototype.insert = function(data) {
-    if(this._root === null) {
-        // empty tree
-        this._root = new Node(data);
+        // At this point of the loop, parent has been set to the previous value of node.
+        // Therefore it cannot be null
+        (parent as Node<T>).setChild(direction, node);
         this.size++;
+
         return true;
-    }
+      }
 
-    var dir = 0;
+      // Cache comparison result. We have no idea how long this can take to compare two datas.
+      const comparisonResult = this.comparator(node.data, data);
 
-    // setup
-    var p = null; // parent
-    var node = this._root;
-
-    // search down
-    while(true) {
-        if(node === null) {
-            // insert new node at the bottom
-            node = new Node(data);
-            p.set_child(dir, node);
-            this.size++;
-            return true;
-        }
-
-        // stop if found
-        if(this._comparator(node.data, data) === 0) {
-            return false;
-        }
-
-        dir = this._comparator(node.data, data) < 0;
-
-        // update helpers
-        p = node;
-        node = node.get_child(dir);
-    }
-};
-
-// returns true if removed, false if not found
-BinTree.prototype.remove = function(data) {
-    if(this._root === null) {
+      if (comparisonResult === 0) {
         return false;
+      } else {
+        direction = getDirectionFromBoolean(comparisonResult < 0);
+      }
+
+      // node is not null, so parent is not null also.
+      parent = node;
+      // here node can become null again.
+      node = node.getChild(direction);
+    }
+  }
+
+  /**
+   * @param data The data to remove
+   * @returns true if removed, false if not foundNode
+   */
+  remove(data: T) {
+    if (isNull(this.root)) {
+      return false;
     }
 
-    var head = new Node(undefined); // fake tree root
-    var node = head;
-    node.right = this._root;
-    var p = null; // parent
-    var found = null; // found item
-    var dir = 1;
+    let direction = Direction.Right;
 
-    while(node.get_child(dir) !== null) {
-        p = node;
-        node = node.get_child(dir);
-        var cmp = this._comparator(data, node.data);
-        dir = cmp > 0;
+    const head = new Node<unknown>(undefined);
+    head.setChild(direction, this.root);
 
-        if(cmp === 0) {
-            found = node;
+    let node: Node<T> | null = (head as Node<T>);
+    let parent: Node<T> | null = null;
+    let foundNode: Node<T> | null = null;
+
+    while (isNode(node?.getChild(direction) ?? null)) {
+      parent = node;
+      node = node?.getChild(direction) ?? null;
+
+      if (isNode(node)) {
+        const comparisonResult = this.comparator(data, node.data);
+
+        if (comparisonResult === 0) {
+          foundNode = node;
+        } else {
+          direction = getDirectionFromBoolean(comparisonResult > 0);
         }
+      }
     }
 
-    if(found !== null) {
-        found.data = node.data;
-        p.set_child(p.right === node, node.get_child(node.left === null));
+    if (isNode(foundNode) && isNode(parent)) {
+      parent.setChild(
+        getDirectionFromBoolean(parent.right === node),
+        node?.getChild(getDirectionFromBoolean(!node.left)) ?? null,
+      );
 
-        this._root = head.right;
-        this.size--;
-        return true;
+      this.root = (head.right as Node<T>);
+      this.size--;
+      return true;
     }
-    else {
-        return false;
-    }
-};
 
-module.exports = BinTree;
-
+    return false;
+  }
+}

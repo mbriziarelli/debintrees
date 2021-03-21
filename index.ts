@@ -1,4 +1,2 @@
-module.exports = {
-    RBTree: require('./lib/rbtree'),
-    BinTree: require('./lib/bintree')
-};
+export { RBTree } from "./rbtree.ts";
+export { BinTree } from "./bintree.ts";

@@ -1,30 +1,36 @@
-import type { Comparator } from "./types.ts";
-import type { Node } from "./node.ts";
+import { isNode, isNull, Node } from "./node.ts";
+import { Comparator, getDirectionFromBoolean } from "./types.ts";
 import { Iterator } from "./iterator.ts";
 
 export class TreeBase<T> {
-  public _comparator: Comparator<T> | null = null;
-  public _root: Node<T> | null = null;
+  public comparator: Comparator<T> | null = null;
+  public root: Node<T> | null = null;
 
   public size = 0;
 
-  // removes all nodes from the tree
+  /**
+   * removes all nodes from the tree
+   */
   clear() {
-    this._root = null;
+    this.root = null;
     this.size = 0;
   }
 
-  // returns node data if found, null otherwise
+  /**
+   * @param data 
+   * @returns node data if found, null otherwise 
+   */
   find(data: T) {
-    if (this._comparator) {
-      let res = this._root;
+    if (this.comparator) {
+      let res = this.root;
 
-      while (res !== null) {
-        const c = this._comparator(data, res.data);
-        if (c === 0) {
+      while (isNode(res)) {
+        const comparisonResult = this.comparator(data, res.data);
+
+        if (comparisonResult === 0) {
           return res.data;
         } else {
-          res = res.get_child(c > 0);
+          res = res.getChild(getDirectionFromBoolean(comparisonResult > 0));
         }
       }
     }
@@ -32,20 +38,24 @@ export class TreeBase<T> {
     return null;
   }
 
-  // returns iterator to node if found, null otherwise
+  /**
+   * @param data 
+   * @returns iterator to node if found, null otherwise
+   */
   findIter(data: T) {
-    if (this._comparator) {
+    if (this.comparator) {
       const iter = this.iterator();
-      let res = this._root;
+      let res = this.root;
 
-      while (res !== null) {
-        const c = this._comparator(data, res.data);
-        if (c === 0) {
-          iter._cursor = res;
+      while (isNode(res)) {
+        const comparisonResult = this.comparator(data, res.data);
+
+        if (comparisonResult === 0) {
+          iter.cursor = res;
           return iter;
         } else {
-          iter._ancestors.push(res);
-          res = res.get_child(c > 0);
+          iter.ancestors.push(res);
+          res = res.getChild(getDirectionFromBoolean(comparisonResult > 0));
         }
       }
     }
@@ -53,46 +63,58 @@ export class TreeBase<T> {
     return null;
   }
 
-  // Returns an iterator to the tree node at or immediately after the item
-  lowerBound(item: T) {
+  /**
+   * @param data 
+   * @returns an iterator to the tree node at or immediately after the data 
+   */
+  lowerBound(data: T) {
     const iter = this.iterator();
-    const cmp = this._comparator;
 
-    if (cmp) {
-      let cur = this._root;
+    if (this.comparator) {
+      let currentNode = this.root;
 
-      while (cur !== null) {
-        const c = cmp(item, cur.data);
-        if (c === 0) {
-          iter._cursor = cur;
+      while (isNode(currentNode)) {
+        const comparisonResult = this.comparator(data, currentNode.data);
+
+        if (comparisonResult === 0) {
+          iter.cursor = currentNode;
           return iter;
         }
-        iter._ancestors.push(cur);
-        cur = cur.get_child(c > 0);
+        iter.ancestors.push(currentNode);
+        currentNode = currentNode.getChild(
+          getDirectionFromBoolean(comparisonResult > 0),
+        );
       }
 
-      for (let i = iter._ancestors.length - 1; i >= 0; --i) {
-        cur = iter._ancestors[i];
-        if (cur && cmp(item, cur.data) < 0) {
-          iter._cursor = cur;
-          iter._ancestors.length = i;
+      for (let i = iter.ancestors.length - 1; i >= 0; --i) {
+        currentNode = iter.ancestors[i];
+        if (currentNode && this.comparator(data, currentNode.data) < 0) {
+          iter.cursor = currentNode;
+          iter.ancestors.length = i;
+
           return iter;
         }
       }
 
-      iter._ancestors.length = 0;
+      iter.ancestors.length = 0;
     }
 
     return iter;
   }
 
-  // Returns an iterator to the tree node immediately after the item
-  upperBound(item: T) {
-    const iter = this.lowerBound(item);
-    const cmp = this._comparator;
+  /**
+   * @param data 
+   * @returns an iter to the tree node immediately after the data 
+   */
+  upperBound(data: T) {
+    const iter = this.lowerBound(data);
 
-    if (cmp) {
-      while (iter.data() !== null && cmp(iter.data(), item) === 0) {
+    if (this.comparator) {
+      const iteratorData = iter.data();
+
+      while (
+        iteratorData !== null && this.comparator(iteratorData, data) === 0
+      ) {
         iter.next();
       }
     }
@@ -100,59 +122,73 @@ export class TreeBase<T> {
     return iter;
   }
 
-  // returns null if tree is empty
+  /**
+   * @returns null if tree is empty
+   */
   min() {
-    let res = this._root;
+    let node = this.root;
 
-    if (res === null) {
+    if (isNull(node)) {
       return null;
     }
-    while (res.left !== null) {
-      res = res.left;
+    while (isNode(node.left)) {
+      node = node.left;
     }
 
-    return res.data;
+    return node.data;
   }
 
-  // returns null if tree is empty
+  /**
+   * @returns null if tree is empty
+   */
   max() {
-    let res = this._root;
+    let node = this.root;
 
-    if (res === null) {
+    if (isNull(node)) {
       return null;
     }
-    while (res.right !== null) {
-      res = res.right;
+    while (isNode(node.right)) {
+      node = node.right;
     }
 
-    return res.data;
+    return node.data;
   }
 
-  // returns a null iterator
-  // call next() or prev() to point to an element
+  /**
+   * call next() or prev() to point to an element
+   * @returns a null iterator
+   */
   iterator() {
     return new Iterator<T>(this);
   }
 
-  // calls cb on each node's data, in order
-  each(cb: (data: T) => boolean) {
-    const it = this.iterator();
+  /**
+   * Calls callback on each node's data, in order.
+   * @param callback 
+   * @returns when callback returns false or there is no more element in tree.
+   */
+  each(callback: (data: T) => boolean) {
+    const iter = this.iterator();
     let data;
 
-    while ((data = it.next()) !== null) {
-      if (cb(data) === false) {
+    while ((data = iter.next()) !== null) {
+      if (callback(data) === false) {
         return;
       }
     }
   }
 
-  // calls cb on each node's data, in reverse order
-  reach(cb: (data: T) => boolean) {
-    const it = this.iterator();
+  /**
+   * calls callback on each node's data, in reverse order
+   * @param callback 
+   * @returns when callback returns false or there is no more element in tree.
+   */
+  reach(callback: (data: T) => boolean) {
+    const iter = this.iterator();
     let data;
 
-    while ((data = it.prev()) !== null) {
-      if (cb(data) === false) {
+    while ((data = iter.prev()) !== null) {
+      if (callback(data) === false) {
         return;
       }
     }

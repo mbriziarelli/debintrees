@@ -1,218 +1,225 @@
+import {
+  Comparator,
+  Direction,
+  getDirectionFromBoolean,
+  getOppositeDirection,
+} from "./types.ts";
+import { isNode, isNull, isRed, Node } from "./node.ts";
+import { TreeBase } from "./treebase.ts";
 
-var TreeBase = require('./treebase');
+const singleRotate = <T>(
+  root: Node<T> | null,
+  direction: Direction,
+): Node<T> | null => {
+  const oppositeDirection = getOppositeDirection(direction);
 
-function Node(data) {
-    this.data = data;
-    this.left = null;
-    this.right = null;
-    this.red = true;
-}
+  if (isNode(root)) {
+    const save = root.getChild(oppositeDirection);
 
-Node.prototype.get_child = function(dir) {
-    return dir ? this.right : this.left;
+    if (isNode(save)) {
+      root.setChild(oppositeDirection, save.getChild(direction));
+      save.setChild(direction, root);
+
+      root.red = true;
+      save.red = false;
+
+      return save;
+    }
+  }
+
+  return null;
 };
 
-Node.prototype.set_child = function(dir, val) {
-    if(dir) {
-        this.right = val;
-    }
-    else {
-        this.left = val;
-    }
+const doubleRotate = <T>(
+  root: Node<T> | null,
+  direction: Direction,
+): Node<T> | null => {
+  const oppositeDirection = getOppositeDirection(direction);
+
+  if (isNode(root)) {
+    root.setChild(
+      oppositeDirection,
+      singleRotate(root.getChild(oppositeDirection), oppositeDirection),
+    );
+
+    return singleRotate(root, direction);
+  }
+
+  return null;
 };
 
-function RBTree(comparator) {
-    this._root = null;
-    this._comparator = comparator;
-    this.size = 0;
-}
+export class RBTree<T> extends TreeBase<T> {
+  root: Node<T> | null = null;
+  size = 0;
 
-RBTree.prototype = new TreeBase();
+  constructor(public comparator: Comparator<T>) {
+    super();
+  }
 
-// returns true if inserted, false if duplicate
-RBTree.prototype.insert = function(data) {
-    var ret = false;
+  /**
+   * @param data The data to insert
+   * @returns true if inserted, false if duplicate
+   */
+  insert(data: T) {
+    let inserted = false;
 
-    if(this._root === null) {
-        // empty tree
-        this._root = new Node(data);
-        ret = true;
-        this.size++;
-    }
-    else {
-        var head = new Node(undefined); // fake tree root
+    if (isNull(this.root)) {
+      this.root = new Node(data);
+      inserted = true;
+      this.size++;
+    } else {
+      const head = new Node<unknown>(undefined);
+      head.right = this.root;
 
-        var dir = 0;
-        var last = 0;
+      let direction = Direction.Left;
+      let last = 0;
+      let grandGrandParent: Node<T> | null = (head as Node<T>);
+      let grandParent: Node<T> | null = null;
+      let parent: Node<T> | null = null;
+      let node: Node<T> | null = this.root;
 
-        // setup
-        var gp = null; // grandparent
-        var ggp = head; // grand-grand-parent
-        var p = null; // parent
-        var node = this._root;
-        ggp.right = this._root;
-
-        // search down
-        while(true) {
-            if(node === null) {
-                // insert new node at the bottom
-                node = new Node(data);
-                p.set_child(dir, node);
-                ret = true;
-                this.size++;
-            }
-            else if(is_red(node.left) && is_red(node.right)) {
-                // color flip
-                node.red = true;
-                node.left.red = false;
-                node.right.red = false;
-            }
-
-            // fix red violation
-            if(is_red(node) && is_red(p)) {
-                var dir2 = ggp.right === gp;
-
-                if(node === p.get_child(last)) {
-                    ggp.set_child(dir2, single_rotate(gp, !last));
-                }
-                else {
-                    ggp.set_child(dir2, double_rotate(gp, !last));
-                }
-            }
-
-            var cmp = this._comparator(node.data, data);
-
-            // stop if found
-            if(cmp === 0) {
-                break;
-            }
-
-            last = dir;
-            dir = cmp < 0;
-
-            // update helpers
-            if(gp !== null) {
-                ggp = gp;
-            }
-            gp = p;
-            p = node;
-            node = node.get_child(dir);
+      while (true) {
+        if (isNull(node)) {
+          // insert new node at the bottom
+          node = new Node(data);
+          parent.setChild(direction, node);
+          inserted = true;
+          this.size++;
+        } else if (
+          isNode(node.left) && isRed(node.left) && isNode(node.right) &&
+          isRed(node.right)
+        ) {
+          node.red = true;
+          node.left.red = false;
+          node.right.red = false;
         }
 
-        // update root
-        this._root = head.right;
-    }
+        // fix red violation
+        if (isNode(node) && isRed(node) && isNode(parent) && isRed(parent)) {
+          const direction2 = getDirectionFromBoolean(
+            grandGrandParent.right === grandParent,
+          );
 
-    // make root black
-    this._root.red = false;
-
-    return ret;
-};
-
-// returns true if removed, false if not found
-RBTree.prototype.remove = function(data) {
-    if(this._root === null) {
-        return false;
-    }
-
-    var head = new Node(undefined); // fake tree root
-    var node = head;
-    node.right = this._root;
-    var p = null; // parent
-    var gp = null; // grand parent
-    var found = null; // found item
-    var dir = 1;
-
-    while(node.get_child(dir) !== null) {
-        var last = dir;
-
-        // update helpers
-        gp = p;
-        p = node;
-        node = node.get_child(dir);
-
-        var cmp = this._comparator(data, node.data);
-
-        dir = cmp > 0;
-
-        // save found node
-        if(cmp === 0) {
-            found = node;
+          if (node === parent.getChild(last)) {
+            grandGrandParent.setChild(
+              direction2,
+              singleRotate(grandParent, getDirectionFromBoolean(!last)),
+            );
+          } else {
+            grandGrandParent.setChild(
+              direction2,
+              doubleRotate(grandParent, getDirectionFromBoolean(!last)),
+            );
+          }
         }
 
-        // push the red node down
-        if(!is_red(node) && !is_red(node.get_child(dir))) {
-            if(is_red(node.get_child(!dir))) {
-                var sr = single_rotate(node, dir);
-                p.set_child(last, sr);
-                p = sr;
-            }
-            else if(!is_red(node.get_child(!dir))) {
-                var sibling = p.get_child(!last);
-                if(sibling !== null) {
-                    if(!is_red(sibling.get_child(!last)) && !is_red(sibling.get_child(last))) {
-                        // color flip
-                        p.red = false;
-                        sibling.red = true;
-                        node.red = true;
-                    }
-                    else {
-                        var dir2 = gp.right === p;
+        const comparisonResult = this.comparator(node.data, data);
 
-                        if(is_red(sibling.get_child(last))) {
-                            gp.set_child(dir2, double_rotate(p, last));
-                        }
-                        else if(is_red(sibling.get_child(!last))) {
-                            gp.set_child(dir2, single_rotate(p, last));
-                        }
+        if (comparisonResult === 0) {
+          break;
+        } else {
+          last = direction;
+          direction = getDirectionFromBoolean(comparisonResult < 0);
 
-                        // ensure correct coloring
-                        var gpc = gp.get_child(dir2);
-                        gpc.red = true;
-                        node.red = true;
-                        gpc.left.red = false;
-                        gpc.right.red = false;
-                    }
-                }
-            }
+          if (!isNull(grandParent)) {
+            grandGrandParent = grandParent;
+          }
+          grandParent = parent;
+          parent = node;
+          node = node.getChild(direction);
         }
+      }
+
+      this.root = head.right as Node<T>;
     }
 
-    // replace and remove if found
-    if(found !== null) {
-        found.data = node.data;
-        p.set_child(p.right === node, node.get_child(node.left === null));
-        this.size--;
+    this.root.red = false;
+    return inserted;
+  }
+
+  // returns true if removed, false if not found
+  remove(data: T) {
+    if (isNull(this.root)) {
+      return false;
     }
 
-    // update root and make it black
-    this._root = head.right;
-    if(this._root !== null) {
-        this._root.red = false;
+    const head = new Node<unknown>(undefined);
+    head.right = this.root;
+
+    let node: Node<T> | null = head as Node<T>;
+    let parent: Node<T> | null = null;
+    let grandParent: Node<T> | null = null;
+    let found: Node<T> | null = null;
+    let direction = getDirectionFromBoolean(true);
+
+    while (isNode(node?.getChild(direction) ?? null)) {
+      const lastDirection = direction;
+
+      grandParent = parent;
+      parent = node;
+      node = node?.getChild(direction) ?? null;
+
+      const comparisonResult = this.comparator(data, node.data);
+
+      direction = getDirectionFromBoolean(comparisonResult > 0);
+
+      if (comparisonResult === 0) {
+        found = node;
+      }
+
+      // push the red node down
+      if (!isRed(node) && !isRed(node.getChild(direction))) {
+        if (isRed(node.getChild(!direction))) {
+          let sr = singleRotate(node, direction);
+          parent.setChild(lastDirection, sr);
+          parent = sr;
+        } else if (!isRed(node.getChild(!direction))) {
+          let sibling = parent.getChild(!lastDirection);
+          if (sibling !== null) {
+            if (
+              !isRed(sibling.getChild(!lastDirection)) &&
+              !isRed(sibling.getChild(lastDirection))
+            ) {
+              // color flip
+              parent.red = false;
+              sibling.red = true;
+              node.red = true;
+            } else {
+              var dir2 = grandParent.right === parent;
+
+              if (isRed(sibling.getChild(lastDirection))) {
+                grandParent.setChild(dir2, doubleRotate(parent, lastDirection));
+              } else if (isRed(sibling.getChild(!lastDirection))) {
+                grandParent.setChild(dir2, singleRotate(parent, lastDirection));
+              }
+
+              // ensure correct coloring
+              var gpc = grandParent.getChild(dir2);
+              gpc.red = true;
+              node.red = true;
+              gpc.left.red = false;
+              gpc.right.red = false;
+            }
+          }
+        }
+      }
     }
 
-    return found !== null;
-};
+    if (isNode(found)) {
+      found.data = node.data;
+      parent.setChild(
+        parent.right === node ? Direction.Right : Direction.Left,
+        node.getChild(node.left === null ? Direction.Right : Direction.Left),
+      );
+      this.size--;
+    }
 
-function is_red(node) {
-    return node !== null && node.red;
+    this.root = head.right as Node<T>;
+
+    if (isNode(this.root)) {
+      this.root.red = false;
+    }
+
+    return isNode(found);
+  }
 }
-
-function single_rotate(root, dir) {
-    var save = root.get_child(!dir);
-
-    root.set_child(!dir, save.get_child(dir));
-    save.set_child(dir, root);
-
-    root.red = true;
-    save.red = false;
-
-    return save;
-}
-
-function double_rotate(root, dir) {
-    root.set_child(!dir, single_rotate(root.get_child(!dir), !dir));
-    return single_rotate(root, dir);
-}
-
-module.exports = RBTree;
