@@ -169,7 +169,7 @@ export class RBTree<T> extends TreeBase<T> {
           const sibling =
             parent?.getChild(getOppositeDirection(lastDirection)) ?? null;
 
-          if (isNode(sibling) && isNode(parent)) {
+          if (isNode(sibling) && isNode(parent) && isNode(grandParent)) {
             if (
               !isRed(sibling.getChild(getOppositeDirection(lastDirection))) &&
               !isRed(sibling.getChild(lastDirection))
@@ -179,24 +179,24 @@ export class RBTree<T> extends TreeBase<T> {
               node.red = true;
             } else {
               const direction2 = getDirectionFromBoolean(
-                (grandParent?.right ?? null) === parent,
+                grandParent.right === parent,
               );
 
               if (isRed(sibling.getChild(lastDirection))) {
-                grandParent?.setChild(
+                grandParent.setChild(
                   direction2,
                   doubleRotate(parent, lastDirection),
                 );
               } else if (
                 isRed(sibling.getChild(getOppositeDirection(lastDirection)))
               ) {
-                grandParent?.setChild(
+                grandParent.setChild(
                   direction2,
                   singleRotate(parent, lastDirection),
                 );
               }
 
-              const grandParentChild = grandParent?.getChild(direction2) ??
+              const grandParentChild = grandParent.getChild(direction2) ??
                 null;
 
               if (isNode(grandParentChild)) {

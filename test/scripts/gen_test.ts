@@ -1,38 +1,36 @@
 // generates a test case to STDOUT
 
-var no_dups = false; // set to true if you don't want duplicate inserts
-var num_inserts = 100000;
+const noDups = false; // set to true if you don't want duplicate inserts
+const numInserts = 100000;
+const nums: number[] = [];
+const added: number[] = [];
+const ahash: Record<number, boolean> = {};
+const randInt = (start: number, end: number) =>
+  Math.floor(Math.random() * (end - start + 1)) + start;
+const getNodeToRemove = () => added.splice(randInt(0, added.length - 1), 1)[0];
 
-function randInt(start, end) {
-    return Math.floor(Math.random()*(end-start + 1)) + start;
-}
+// Populate nums with numbers
+for (let i = 0; i < numInserts; i++) {
+  let n;
 
-function get_node_to_remove() {
-    var idx = randInt(0, added.length - 1);
-    return added.splice(idx, 1)[0];
-}
+  do {
+    n = randInt(1, 1000000000);
+  } while (noDups && ahash[n]);
 
+  added.push(n);
+  nums.push(n);
+  if (noDups) {
+    ahash[n] = true;
+  }
 
-var nums = [];
-var added = [];
-var ahash = {};
-for(var i=0; i < num_inserts; i++) {
-    do {
-        var n = randInt(1, 1000000000);
-    } while(no_dups && ahash[n]);
-    added.push(n);
-    nums.push(n);
-    if(no_dups)
-        ahash[n] = true;
-
-    if(Math.random() < .3) {
-        // remove a node
-        nums.push(-get_node_to_remove());
-    }
+  if (Math.random() < .3) {
+    nums.push(-getNodeToRemove());
+  }
 }
 
 // remove the rest, randomly
-while(added.length > 0)
-    nums.push(-get_node_to_remove());
+while (added.length > 0) {
+  nums.push(-getNodeToRemove());
+}
 
-console.log(nums.join('\n'));
+console.log(nums.join("\n"));
