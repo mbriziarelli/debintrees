@@ -1,25 +1,43 @@
 import { Direction } from "./types.ts";
 
 export class Node<T> {
-  left: Node<T> | null = null;
-  right: Node<T> | null = null;
-  red = true;
+  public left: Node<T> | null = null;
+  public right: Node<T> | null = null;
+  public red = true;
 
   constructor(public data: T) {}
 
   getChild(direction: Direction) {
-    return direction === Direction.Right ? this.right : this.left;
+    return direction === Direction.Left ? this.left : this.right;
   }
 
   setChild(direction: Direction, child: Node<T> | null) {
-    this[direction === Direction.Right ? "right" : "left"] = child;
+    direction === Direction.Left ? this.left = child : this.right = child;
+  }
+
+  hasChild(direction: Direction) {
+    return direction === Direction.Left
+      ? this.left !== null
+      : this.right !== null;
+  }
+
+  isRed() {
+    return this.red;
+  }
+
+  isBlack() {
+    return !this.red;
   }
 }
 
-export const isNull = (value: unknown): value is null => value === null;
+export const isNull = <T>(value: Node<T> | null): value is null =>
+  value === null;
 
 export const isNode = <T>(value: Node<T> | null): value is Node<T> =>
-  !isNull(value);
+  value instanceof Node;
 
 export const isRed = <T>(node: Node<T> | null): boolean =>
-  isNode(node) && node.red;
+  isNode(node) && node.isRed();
+
+export const isBlack = <T>(node: Node<T> | null): boolean =>
+  isNode(node) && node.isBlack();

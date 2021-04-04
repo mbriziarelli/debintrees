@@ -3,10 +3,10 @@ import { Comparator, getDirectionFromBoolean } from "./types.ts";
 import { Iterator } from "./iterator.ts";
 
 export class TreeBase<T> {
-  public comparator: Comparator<T> | null = null;
   public root: Node<T> | null = null;
-
   public size = 0;
+
+  constructor(public comparator: Comparator<T>) {}
 
   /**
    * removes all nodes from the tree
@@ -21,17 +21,15 @@ export class TreeBase<T> {
    * @returns node data if found, null otherwise 
    */
   find(data: T) {
-    if (this.comparator) {
-      let res = this.root;
+    let node = this.root;
 
-      while (isNode(res)) {
-        const comparisonResult = this.comparator(data, res.data);
+    while (isNode(node)) {
+      const comparisonResult = this.comparator(data, node.data);
 
-        if (comparisonResult === 0) {
-          return res.data;
-        } else {
-          res = res.getChild(getDirectionFromBoolean(comparisonResult > 0));
-        }
+      if (comparisonResult === 0) {
+        return node.data;
+      } else {
+        node = node.getChild(getDirectionFromBoolean(comparisonResult > 0));
       }
     }
 
@@ -43,20 +41,18 @@ export class TreeBase<T> {
    * @returns iterator to node if found, null otherwise
    */
   findIter(data: T) {
-    if (this.comparator) {
-      const iter = this.iterator();
-      let res = this.root;
+    const iter = this.iterator();
+    let node = this.root;
 
-      while (isNode(res)) {
-        const comparisonResult = this.comparator(data, res.data);
+    while (isNode(node)) {
+      const comparisonResult = this.comparator(data, node.data);
 
-        if (comparisonResult === 0) {
-          iter.cursor = res;
-          return iter;
-        } else {
-          iter.ancestors.push(res);
-          res = res.getChild(getDirectionFromBoolean(comparisonResult > 0));
-        }
+      if (comparisonResult === 0) {
+        iter.cursor = node;
+        return iter;
+      } else {
+        iter.ancestors.push(node);
+        node = node.getChild(getDirectionFromBoolean(comparisonResult > 0));
       }
     }
 
@@ -70,34 +66,34 @@ export class TreeBase<T> {
   lowerBound(data: T) {
     const iter = this.iterator();
 
-    if (this.comparator) {
-      let currentNode = this.root;
+    let currentNode = this.root;
 
-      while (isNode(currentNode)) {
-        const comparisonResult = this.comparator(data, currentNode.data);
+    while (isNode(currentNode)) {
+      const comparisonResult = this.comparator(data, currentNode.data);
 
-        if (comparisonResult === 0) {
-          iter.cursor = currentNode;
-          return iter;
-        }
-        iter.ancestors.push(currentNode);
-        currentNode = currentNode.getChild(
-          getDirectionFromBoolean(comparisonResult > 0),
-        );
+      if (comparisonResult === 0) {
+        iter.cursor = currentNode;
+        return iter;
       }
-
-      for (let i = iter.ancestors.length - 1; i >= 0; --i) {
-        currentNode = iter.ancestors[i];
-        if (currentNode && this.comparator(data, currentNode.data) < 0) {
-          iter.cursor = currentNode;
-          iter.ancestors.length = i;
-
-          return iter;
-        }
-      }
-
-      iter.ancestors.length = 0;
+      iter.ancestors.push(currentNode);
+      currentNode = currentNode.getChild(
+        getDirectionFromBoolean(comparisonResult > 0),
+      );
     }
+
+    for (let i = iter.ancestors.length - 1; i >= 0; --i) {
+      currentNode = iter.ancestors[i];
+      if (
+        isNode(currentNode) && this.comparator(data, currentNode.data) < 0
+      ) {
+        iter.cursor = currentNode;
+        iter.ancestors.length = i;
+
+        return iter;
+      }
+    }
+
+    iter.ancestors.length = 0;
 
     return iter;
   }
@@ -109,14 +105,12 @@ export class TreeBase<T> {
   upperBound(data: T) {
     const iter = this.lowerBound(data);
 
-    if (this.comparator) {
-      const iteratorData = iter.data();
+    const iteratorData = iter.data();
 
-      while (
-        iteratorData !== null && this.comparator(iteratorData, data) === 0
-      ) {
-        iter.next();
-      }
+    while (
+      iteratorData !== null && this.comparator(iteratorData, data) === 0
+    ) {
+      iter.next();
     }
 
     return iter;

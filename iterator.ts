@@ -19,7 +19,7 @@ export class Iterator<T> {
       const root = this.tree.root;
 
       if (root !== null) {
-        this._minNode(root);
+        this.#minNode(root);
       }
     } else {
       if (this.cursor.right === null) {
@@ -39,7 +39,7 @@ export class Iterator<T> {
       } else {
         // get the next node from the subtree
         this.ancestors.push(this.cursor);
-        this._minNode(this.cursor.right);
+        this.#minNode(this.cursor.right);
       }
     }
 
@@ -54,7 +54,7 @@ export class Iterator<T> {
       const root = this.tree.root;
 
       if (root !== null) {
-        this._maxNode(root);
+        this.#maxNode(root);
       }
     } else {
       if (this.cursor.left === null) {
@@ -71,28 +71,28 @@ export class Iterator<T> {
         } while (this.cursor?.left === save);
       } else {
         this.ancestors.push(this.cursor);
-        this._maxNode(this.cursor.left);
+        this.#maxNode(this.cursor.left);
       }
     }
 
     return this.data();
   }
 
-  private _minNode(start: Node<T>) {
+  #minNode = (start: Node<T>) => {
     while (start.left !== null) {
       this.ancestors.push(start);
       start = start.left;
     }
 
     this.cursor = start;
-  }
+  };
 
-  private _maxNode(start: Node<T>) {
+  #maxNode = (start: Node<T>) => {
     while (start.right !== null) {
       this.ancestors.push(start);
       start = start.right;
     }
 
     this.cursor = start;
-  }
+  };
 }

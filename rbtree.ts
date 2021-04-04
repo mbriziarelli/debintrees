@@ -49,13 +49,6 @@ const doubleRotate = <T>(
 };
 
 export class RBTree<T> extends TreeBase<T> {
-  root: Node<T> | null = null;
-  size = 0;
-
-  constructor(public comparator: Comparator<T>) {
-    super();
-  }
-
   /**
    * @param data The data to insert
    * @returns true if inserted, false if duplicate
@@ -80,9 +73,8 @@ export class RBTree<T> extends TreeBase<T> {
 
       while (true) {
         if (isNull(node)) {
-          // insert new node at the bottom
           node = new Node(data);
-          parent.setChild(direction, node);
+          parent?.setChild(direction, node);
           inserted = true;
           this.size++;
         } else if (
@@ -159,7 +151,7 @@ export class RBTree<T> extends TreeBase<T> {
       parent = node;
       node = node?.getChild(direction) ?? null;
 
-      const comparisonResult = this.comparator(data, node.data);
+      const comparisonResult = this.comparator(data, (node as Node<T>).data);
 
       direction = getDirectionFromBoolean(comparisonResult > 0);
 
@@ -167,45 +159,59 @@ export class RBTree<T> extends TreeBase<T> {
         found = node;
       }
 
-      // push the red node down
-      if (!isRed(node) && !isRed(node.getChild(direction))) {
-        if (isRed(node.getChild(!direction))) {
-          let sr = singleRotate(node, direction);
-          parent.setChild(lastDirection, sr);
-          parent = sr;
-        } else if (!isRed(node.getChild(!direction))) {
-          let sibling = parent.getChild(!lastDirection);
-          if (sibling !== null) {
+      if (isNode(node) && !isRed(node) && !isRed(node.getChild(direction))) {
+        if (isRed(node.getChild(getOppositeDirection(direction)))) {
+          const rotated = singleRotate(node, direction);
+
+          parent?.setChild(lastDirection, rotated);
+          parent = rotated;
+        } else {
+          const sibling =
+            parent?.getChild(getOppositeDirection(lastDirection)) ?? null;
+
+          if (isNode(sibling) && isNode(parent)) {
             if (
-              !isRed(sibling.getChild(!lastDirection)) &&
+              !isRed(sibling.getChild(getOppositeDirection(lastDirection))) &&
               !isRed(sibling.getChild(lastDirection))
             ) {
-              // color flip
               parent.red = false;
               sibling.red = true;
               node.red = true;
             } else {
-              var dir2 = grandParent.right === parent;
+              const direction2 = getDirectionFromBoolean(
+                (grandParent?.right ?? null) === parent,
+              );
 
               if (isRed(sibling.getChild(lastDirection))) {
-                grandParent.setChild(dir2, doubleRotate(parent, lastDirection));
-              } else if (isRed(sibling.getChild(!lastDirection))) {
-                grandParent.setChild(dir2, singleRotate(parent, lastDirection));
+                grandParent?.setChild(
+                  direction2,
+                  doubleRotate(parent, lastDirection),
+                );
+              } else if (
+                isRed(sibling.getChild(getOppositeDirection(lastDirection)))
+              ) {
+                grandParent?.setChild(
+                  direction2,
+                  singleRotate(parent, lastDirection),
+                );
               }
 
-              // ensure correct coloring
-              var gpc = grandParent.getChild(dir2);
-              gpc.red = true;
-              node.red = true;
-              gpc.left.red = false;
-              gpc.right.red = false;
+              const grandParentChild = grandParent?.getChild(direction2) ??
+                null;
+
+              if (isNode(grandParentChild)) {
+                grandParentChild.red = true;
+                node.red = true;
+                grandParentChild.left && (grandParentChild.left.red = false);
+                grandParentChild.right && (grandParentChild.right.red = false);
+              }
             }
           }
         }
       }
     }
 
-    if (isNode(found)) {
+    if (isNode(found) && isNode(node) && isNode(parent)) {
       found.data = node.data;
       parent.setChild(
         parent.right === node ? Direction.Right : Direction.Left,

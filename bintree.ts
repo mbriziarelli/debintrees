@@ -3,14 +3,8 @@ import { isNode, isNull, Node } from "./node.ts";
 import { TreeBase } from "./treebase.ts";
 
 export class BinTree<T> extends TreeBase<T> {
-  root: Node<T> | null = null;
-  size = 0;
-
-  constructor(public comparator: Comparator<T>) {
-    super();
-  }
-
   /**
+   * 
    * @param data The data to insert
    * @returns true if inserted, false if duplicate
    */
