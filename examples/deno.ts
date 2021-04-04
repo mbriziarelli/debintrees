@@ -1,7 +1,9 @@
-var Tree = require('..').RBTree;
+import { RBTree } from "../rbtree.ts";
 
 // create a new tree, pass in the compare function
-var tree = new Tree(function(a, b) { return a - b; });
+const tree = new RBTree<number>(function (a: number, b: number) {
+  return a - b;
+});
 
 // do some inserts
 tree.insert(1);
@@ -10,4 +12,4 @@ tree.insert(3);
 tree.remove(2);
 
 // get smallest item
-tree.min();
+console.log(tree.min());

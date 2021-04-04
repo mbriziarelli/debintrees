@@ -49,6 +49,10 @@ const doubleRotate = <T>(
 };
 
 export class RBTree<T> extends TreeBase<T> {
+  constructor(public comparator: Comparator<T>) {
+    super(comparator);
+  }
+
   /**
    * @param data The data to insert
    * @returns true if inserted, false if duplicate
@@ -125,7 +129,7 @@ export class RBTree<T> extends TreeBase<T> {
       this.root = head.right as Node<T>;
     }
 
-    this.root.red = false;
+    if (isNode(this.root)) this.root.red = false;
     return inserted;
   }
 

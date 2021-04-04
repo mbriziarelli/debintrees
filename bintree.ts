@@ -3,6 +3,10 @@ import { isNode, isNull, Node } from "./node.ts";
 import { TreeBase } from "./treebase.ts";
 
 export class BinTree<T> extends TreeBase<T> {
+  constructor(public comparator: Comparator<T>) {
+    super(comparator);
+  }
+
   /**
    * 
    * @param data The data to insert
